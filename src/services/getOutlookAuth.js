@@ -16,19 +16,24 @@ const msalConfig = {
     clientId: process.env.MICROSOFT_WEB_CLIENT_ID,
     authority: process.env.MICROSOFT_AUTHORITY,
     clientSecret: process.env.MICROSOFT_WEB_CLIENT_SECRET,
-    redirectUri: process.env.AUTH_REDIRECT_URI,
+    redirectUri: process.env.AUTH_REDIRECT_URI_OUTLOOK,
   },
 };
-
 const pca = new msal.ConfidentialClientApplication(msalConfig);
 
 exports.getOutlookAuthUrl = async () => {
   codeVerifier = generateCodeVerifier();
-  const codeChallenge = generateCodeChallenge(codeVerifier);
 
+  const codeChallenge = generateCodeChallenge(codeVerifier);
   const authCodeUrlParameters = {
-    scopes: ["openid", "profile", "User.read", "Calendars.Readwrite"],
-    redirectUri: process.env.AUTH_REDIRECT_URI,
+    scopes: [
+      "openid",
+      "profile",
+      "User.read",
+      "Calendars.Readwrite",
+      "MailboxSettings.Read",
+    ],
+    redirectUri: process.env.AUTH_REDIRECT_URI_OUTLOOK,
     codeChallenge,
     codeChallengeMethod: "S256",
   };
@@ -47,8 +52,14 @@ exports.getOutlookAuthUrl = async () => {
 exports.outlookLogin = async (code) => {
   const tokenRequest = {
     code,
-    scopes: ["openid", "profile", "User.Read", "Calendars.ReadWrite"],
-    redirectUri: process.env.AUTH_REDIRECT_URI,
+    scopes: [
+      "openid",
+      "profile",
+      "User.Read",
+      "Calendars.ReadWrite",
+      "MailboxSettings.Read",
+    ],
+    redirectUri: process.env.AUTH_REDIRECT_URI_OUTLOOK,
     codeVerifier,
   };
 
