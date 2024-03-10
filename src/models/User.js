@@ -7,16 +7,16 @@ const accountSchema = new mongoose.Schema({
   provider: { type: String, required: true },
   email: { type: String, required: true },
   accessToken: { type: String, required: true },
-  refreshToken: { type: String, required: true },
+  refreshToken: { type: String },
   tokenExpiredAt: { type: Date, required: true },
 });
 
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   name: { type: String, required: true },
+  timezone: { type: String, required: true, default: "Korea Standard Time" },
+  language: { type: String, required: true, default: "en" },
   accountList: [accountSchema],
-  location: { type: String, required: true },
-  timezone: { type: String, required: true },
 });
 
 exports.User = mongoose.model("User", userSchema);
