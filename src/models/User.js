@@ -16,6 +16,9 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   timezone: { type: String, required: true, default: "Korea Standard Time" },
   language: { type: String, required: true, default: "en" },
+  accessToken: { type: String, required: true },
+  refreshToken: { type: String },
+  tokenExpiredAt: { type: Date, required: true },
   accountList: [accountSchema],
 });
 
