@@ -14,7 +14,8 @@ const accountSchema = new mongoose.Schema({
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   name: { type: String, required: true },
-  timezone: { type: String, required: true, default: "Korea Standard Time" },
+  provider: { type: String, required: true },
+  timezone: { type: String, required: true, default: "Aisa/Seoul" },
   language: { type: String, required: true, default: "en" },
   accessToken: { type: String, required: true },
   refreshToken: { type: String },
