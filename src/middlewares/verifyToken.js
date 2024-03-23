@@ -1,10 +1,15 @@
 /* eslint-disable */
 
 const { google } = require("googleapis");
+const axios = require("axios");
+const { URLSearchParams } = require("url");
+
 const { User } = require("../models/User");
+const { AsanaUser } = require("../models/AsanaUser");
 const {
   saveNewUserTokens,
   saveNewAccountTokens,
+  saveAsanaTokens,
 } = require("../utils/saveNewTokens");
 
 const googleOAuth2Client = new google.auth.OAuth2(
@@ -24,6 +29,7 @@ const refreshUserToken = async (user, provider) => {
       await googleOAuth2Client.getTokenInfo(user.accessToken);
     } catch (error) {
       const { credentials } = await googleOAuth2Client.refreshAccessToken();
+
       await saveNewUserTokens(
         user._id,
         credentials.access_token,
@@ -61,6 +67,41 @@ const refreshAccountTokens = async (accounts) => {
   );
 };
 
+const refreshAsanaTokens = async (asanaDataId) => {
+  const asanaUser = await AsanaUser.findById(asanaDataId);
+  const refreshToken = asanaUser.refreshToken;
+
+  try {
+    const requestBody = new URLSearchParams({
+      client_id: process.env.ASANA_CLIENT_ID,
+      client_secret: process.env.ASANA_CLIENT_SECRET,
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+    }).toString();
+
+    const response = await axios.post(
+      "https://app.asana.com/-/oauth_token",
+      requestBody,
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
+
+    const {
+      access_token,
+      refresh_token = refreshToken,
+      expires_in,
+    } = response.data;
+    const expiredAt = new Date(Date.now() + expires_in * 1000);
+
+    await saveAsanaTokens(asanaDataId, access_token, refresh_token, expiredAt);
+  } catch (error) {
+    console.error("Asana token refresh error:", error);
+  }
+};
+
 exports.verifyToken = async (req, res, next) => {
   const { userId, accessToken } = req.cookies;
   const { provider } = req.body;
@@ -71,6 +112,7 @@ exports.verifyToken = async (req, res, next) => {
 
   try {
     const user = await User.findById(userId);
+    const asanaUser = await AsanaUser.findOne({ userId });
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -78,6 +120,11 @@ exports.verifyToken = async (req, res, next) => {
 
     await refreshAccountTokens(user.accountList);
     await refreshUserToken(user, provider);
+
+    if (asanaUser) {
+      const asanaDataId = asanaUser._id;
+      await refreshAsanaTokens(asanaDataId);
+    }
 
     if (provider === "google") {
       res.cookie("accessToken", user.accessToken, {
