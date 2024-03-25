@@ -3,14 +3,20 @@ const axios = require("axios");
 const { TIMEZONE_LIST } = require("../constants/timezone");
 const { convertUtcDate } = require("../utils/parsetDateformat");
 
-exports.convertTimezoneWithDST = async (date, targetTimezoneId) => {
-  const utcDate = typeof date === "string" ? convertUtcDate(date) : date;
+exports.convertTimezoneWithDST = async (date, provider, targetTimezoneId) => {
+  let utcDate;
+
+  if (provider === "google") {
+    utcDate = typeof date === "string" ? convertUtcDate(date) : date;
+  } else {
+    utcDate = new Date(date);
+  }
+
   const timestamp = utcDate.getTime() / 1000;
-
   const timezoneUrl = "https://maps.googleapis.com/maps/api/timezone/json";
-
   const eventTimeZone = TIMEZONE_LIST.find(
-    (timezone) => timezone.value === targetTimezoneId,
+    (timezone) =>
+      timezone.value === targetTimezoneId || timezone.alt === targetTimezoneId,
   );
 
   try {
@@ -34,20 +40,26 @@ exports.convertTimezoneWithDST = async (date, targetTimezoneId) => {
   }
 };
 
-exports.convertTimezoneWithoutDST = async (date, targetTimezoneId) => {
-  const utcDate = typeof date === "string" ? convertUtcDate(date) : date;
-  const timestamp = utcDate.getTime() / 1000;
+exports.convertTimezoneWithoutDST = async (
+  date,
+  provider,
+  targetTimezoneId,
+) => {
+  let utcDate;
 
+  if (provider === "google") {
+    utcDate = typeof date === "string" ? convertUtcDate(date) : date;
+  } else {
+    utcDate = new Date(date);
+  }
+
+  const timestamp = utcDate.getTime() / 1000;
   const timezoneUrl = "https://maps.googleapis.com/maps/api/timezone/json";
 
   const eventTimeZone = TIMEZONE_LIST.find(
-    (timezone) => timezone.value === targetTimezoneId,
+    (timezone) =>
+      timezone.value === targetTimezoneId || timezone.alt === targetTimezoneId,
   );
-
-  console.log("eventTimeZone:", eventTimeZone);
-  console.log("eventTimeZone.latitude:", eventTimeZone.lat);
-  console.log("eventTimeZone.longitude:", eventTimeZone.long);
-  console.log("timestamp:", timestamp);
 
   try {
     const response = await axios.get(timezoneUrl, {
