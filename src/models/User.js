@@ -8,7 +8,9 @@ const accountSchema = new mongoose.Schema({
   email: { type: String, required: true },
   accessToken: { type: String, required: true },
   refreshToken: { type: String },
-  tokenExpiredAt: { type: Date, required: true },
+  tokenExpiredAt: { type: Date },
+  channelId: { type: String },
+  resourceId: { type: String },
 });
 
 const userSchema = new mongoose.Schema({
@@ -19,7 +21,7 @@ const userSchema = new mongoose.Schema({
   language: { type: String, required: true, default: "en" },
   accessToken: { type: String, required: true },
   refreshToken: { type: String },
-  tokenExpiredAt: { type: Date, required: true },
+  tokenExpiredAt: { type: Date },
   accountList: [accountSchema],
 });
 
