@@ -1,5 +1,4 @@
 const { google } = require("googleapis");
-const e = require("express");
 const googleOAuth2Client = require("../config/googleOAuthClient");
 
 const { Account, User } = require("../models/User");
@@ -10,6 +9,7 @@ const {
   convertTimezoneWithoutDST,
 } = require("./convertDateWithTimezone");
 const { formatDate } = require("../utils/parsetDateformat");
+const { TIMEZONE_LIST } = require("../constants/timezone");
 
 exports.createGoogleCalendarEvent = async (
   accountId,
@@ -19,6 +19,10 @@ exports.createGoogleCalendarEvent = async (
   const account = await Account.findById(accountId);
   const user = await User.findById(account.userId);
   const userTimezone = user.timezone;
+  const formattedUserTimezone = TIMEZONE_LIST.find(
+    (timezone) =>
+      timezone.value === userTimezone || timezone.alt === userTimezone,
+  ).value;
 
   googleOAuth2Client.setCredentials({
     access_token: account.accessToken,
@@ -33,7 +37,7 @@ exports.createGoogleCalendarEvent = async (
   const startAtDate = new Date(startAt);
   const endAtDate = new Date(endAt);
 
-  const hasTimezoneSetting = user.timezone !== timezone;
+  const hasTimezoneSetting = formattedUserTimezone !== timezone;
   let convertedStartAt;
   let convertedEndAt;
 
@@ -41,20 +45,24 @@ exports.createGoogleCalendarEvent = async (
   if (!isAllDayEvent && hasTimezoneSetting) {
     const startAtWithSelectedTimezone = await convertTimezoneWithoutDST(
       startAt,
+      account.provider,
       timezone,
     );
     const endAtWithSelectedTimezone = await convertTimezoneWithoutDST(
       endAt,
+      account.provider,
       timezone,
     );
 
     const startAtWithUserTimezone = await convertTimezoneWithDST(
       startAtWithSelectedTimezone,
-      userTimezone,
+      account.provider,
+      formattedUserTimezone,
     );
     const endAtWithUserTimezone = await convertTimezoneWithDST(
       endAtWithSelectedTimezone,
-      userTimezone,
+      account.provider,
+      formattedUserTimezone,
     );
 
     convertedStartAt = startAtWithUserTimezone;
@@ -124,6 +132,10 @@ exports.updateGoogleCalendarEvent = async (
   const account = await Account.findById(accountId);
   const user = await User.findById(account.userId);
   const userTimezone = user.timezone;
+  const formattedUserTimezone = TIMEZONE_LIST.find(
+    (timezone) =>
+      timezone.value === userTimezone || timezone.alt === userTimezone,
+  ).value;
 
   googleOAuth2Client.setCredentials({
     access_token: account.accessToken,
@@ -133,31 +145,38 @@ exports.updateGoogleCalendarEvent = async (
   const calendar = google.calendar({ version: "v3", auth: googleOAuth2Client });
 
   const originalEventKey = updatedEventData.eventId;
+  const originalEventData = await Event.findOne({ eventId: originalEventKey });
+  const originalEventTimezone = originalEventData.timezone;
+
   const { startAt, endAt, timezone } = updatedEventData;
   const startAtDate = new Date(startAt);
   const endAtDate = new Date(endAt);
 
-  const hasTimezoneSetting = user.timezone !== timezone;
+  const hasTimezoneSetting = originalEventTimezone !== timezone;
   let convertedStartAt;
   let convertedEndAt;
 
   if (!isAllDayEvent && hasTimezoneSetting) {
     const startAtWithSelectedTimezone = await convertTimezoneWithoutDST(
       startAt,
+      account.provider,
       timezone,
     );
     const endAtWithSelectedTimezone = await convertTimezoneWithoutDST(
       endAt,
+      account.provider,
       timezone,
     );
 
     const startAtWithUserTimezone = await convertTimezoneWithDST(
       startAtWithSelectedTimezone,
-      userTimezone,
+      formattedUserTimezone,
+      formattedUserTimezone,
     );
     const endAtWithUserTimezone = await convertTimezoneWithDST(
       endAtWithSelectedTimezone,
-      userTimezone,
+      formattedUserTimezone,
+      formattedUserTimezone,
     );
 
     convertedStartAt = startAtWithUserTimezone;

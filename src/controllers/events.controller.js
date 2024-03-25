@@ -6,6 +6,11 @@ const {
   updateGoogleCalendarEvent,
   deleteGoogleCalendarEvent,
 } = require("../services/handleGoogleCalendarEvents");
+const {
+  createOutlookCalendarEvent,
+  // updateOutlookCalendarEvent, TODO. 마이크로소프트 업데이트 이벤트 서비스를 추가합니다.
+  deleteOutlookCalendarEvent,
+} = require("../services/handleMicrosoftCalendarEvents");
 
 exports.createCalendarEvent = async (req, res, next) => {
   const {
@@ -20,10 +25,11 @@ exports.createCalendarEvent = async (req, res, next) => {
   } = req.body.newEventData;
 
   const account = await Account.findById(accountId);
+  const accountToken = account.accessToken;
   const { provider } = account;
   const tempEventId = crypto.randomUUID();
 
-  const newEventData = {
+  const newEvent = {
     accountId: account._id,
     title,
     place,
@@ -35,14 +41,24 @@ exports.createCalendarEvent = async (req, res, next) => {
     eventId: tempEventId,
   };
 
-  await Event.create(newEventData);
+  await Event.create(newEvent);
+
+  let resultOfCalendarEvent;
 
   // TODO. 추후 provider에 따라 분기처리가 필요할 수 있습니다.
-  const resultOfCalendarEvent = await createGoogleCalendarEvent(
-    accountId,
-    newEventData,
-    isAllDayEvent,
-  );
+  if (provider === "google") {
+    resultOfCalendarEvent = await createGoogleCalendarEvent(
+      accountId,
+      newEvent,
+      isAllDayEvent,
+    );
+  } else if (provider === "outlook") {
+    resultOfCalendarEvent = await createOutlookCalendarEvent(
+      accountId,
+      accountToken,
+      newEvent,
+    );
+  }
 
   res.status(200).send({ result: "success", newEvent: resultOfCalendarEvent });
 };
@@ -56,8 +72,8 @@ exports.updateCalendarEvent = async (req, res, next) => {
     endAt,
     timezone,
     description,
-    provider,
     isAllDayEvent,
+    provider,
   } = req.body.updatedEventData;
 
   const eventIdOfMongoDB = dataId;
@@ -69,21 +85,32 @@ exports.updateCalendarEvent = async (req, res, next) => {
     event.set({
       title,
       place,
-      startAt,
-      endAt,
       timezone,
       description,
     });
 
-    // TODO. 추후 provider에 따라 분기처리가 필요할 수 있습니다.
     const updatedEventData = await event.save();
-    const updatedEvent = await updateGoogleCalendarEvent(
-      accountId,
-      updatedEventData,
-      isAllDayEvent,
-    );
 
-    res.status(200).send({ result: "success", updatedEvent });
+    let resultOfCalendarUpdate;
+
+    if (provider === "google") {
+      resultOfCalendarUpdate = await updateGoogleCalendarEvent(
+        accountId,
+        updatedEventData,
+        isAllDayEvent,
+      );
+    }
+
+    // TODO: 추후 기능 구현을 위한 분기처리입니다.
+    /*  if (provider === "microsoft") {
+      resultOfCalendarUpdate = await updateOutlookCalendarEvent(
+        accountId,
+        accountToken,
+        newEvent
+      );
+    } */
+
+    res.status(200).send({ result: "success", resultOfCalendarUpdate });
   } catch (error) {
     console.error(error);
   }
@@ -92,15 +119,22 @@ exports.updateCalendarEvent = async (req, res, next) => {
 exports.deleteCalendarEvent = async (req, res, next) => {
   const eventIdOfMongoDB = req.params.eventId;
   const { accountId } = req.body;
+  const account = await Account.findById(accountId);
+  const { provider } = account;
 
   try {
     const event = await Event.findById(eventIdOfMongoDB);
 
-    // TODO. 추후 provider에 따라 분기처리가 필요할 수 있습니다.
-    await deleteGoogleCalendarEvent(accountId, event);
-    await Event.deleteOne({ _id: eventIdOfMongoDB });
+    if (provider === "google") {
+      await deleteGoogleCalendarEvent(accountId, event);
+      await Event.deleteOne({ _id: eventIdOfMongoDB });
+    }
 
-    console.log("연결된 구글캘린더 이벤트 삭제 완료");
+    // TODO: 추후 기능 구현을 위한 분기처리입니다.
+    /*  if (provider === "microsoft") {
+      await deleteOutlookCalendarEvent(accountId, accessToken, event);
+      await Event.deleteOne({ _id: eventIdOfMongoDB });
+    } */
 
     res.status(200).send({ result: "success" });
   } catch (error) {
