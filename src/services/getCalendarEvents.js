@@ -15,8 +15,6 @@ exports.getGoogleCalendarEvents = async (accessToken) => {
       orderBy: "startTime",
     });
 
-    console.log("구글 유저 이벤트 호출하기", response.data.items);
-
     return response.data.items;
   } catch (error) {
     console.log("Get google calendar events error:", error);

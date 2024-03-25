@@ -40,7 +40,6 @@ const saveUserWorkSpace = async (asanaId, accessToken) => {
 };
 
 exports.saveAsanaUserInfo = async (userId, asanaInfo) => {
-  console.log("asanaInfo:", asanaInfo);
   const { access_token, refresh_token, expires_in } = asanaInfo;
   const { gid, name, email } = asanaInfo.data;
 

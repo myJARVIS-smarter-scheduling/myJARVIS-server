@@ -20,8 +20,6 @@ exports.getAsanaTokens = async (code) => {
       },
     });
 
-    console.log("Asana tokens:", response.data);
-
     return response.data;
   } catch (error) {
     console.log("Google login error:", error);
