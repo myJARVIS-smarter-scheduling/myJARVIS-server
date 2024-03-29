@@ -2,9 +2,6 @@ const { googleLogin } = require("../services/getGoogleAuth");
 const { getGoogleUserInfo } = require("../services/getUserInfo");
 const { getGoogleCalendarEvents } = require("../services/getCalendarEvents");
 const { saveCalendarEvents } = require("../services/saveCalendarEvents");
-const {
-  setupAllCalendarSubscriptions,
-} = require("../services/subscribeGoogleWebhook");
 const { User, Account } = require("../models/User");
 const { Event } = require("../models/Event");
 
@@ -95,8 +92,6 @@ exports.saveGoogleUserAndCalendar = async (req, res, next) => {
     }
 
     await user.save();
-
-    await setupAllCalendarSubscriptions(account);
 
     if (!userId) {
       res.cookie(
