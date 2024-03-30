@@ -130,14 +130,14 @@ exports.verifyToken = async (req, res, next) => {
       res.cookie("accessToken", user.accessToken, {
         httpOnly: true,
         secure: true,
-        samsite: "none",
+        sameSite: "none",
         expires: new Date(user.tokenExpiredAt),
       });
 
       res.cookie("userId", user._id.toString(), {
         httpOnly: true,
         secure: true,
-        samsite: "none",
+        sameSite: "none",
         expires: new Date(user.tokenExpiredAt),
       });
     }

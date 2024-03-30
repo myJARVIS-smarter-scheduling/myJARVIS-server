@@ -97,14 +97,14 @@ exports.saveGoogleUserAndCalendar = async (req, res, next) => {
       res.cookie("accessToken", user.accessToken, {
         httpOnly: true,
         secure: true,
-        samsite: "none",
-        expires: user.tokenExpiredAt,
+        sameSite: "none",
+        expires: 60 * 60 * 24 * 7 * 1000,
       });
       res.cookie("userId", user._id.toString(), {
         httpOnly: true,
         secure: true,
-        samsite: "none",
-        expires: user.tokenExpiredAt,
+        sameSite: "none",
+        expires: 60 * 60 * 24 * 7 * 1000,
       });
     }
 
@@ -183,13 +183,13 @@ exports.saveOutlookUserAndCalendar = async (req, res, next) => {
     res.cookie("accessToken", user.accessToken, {
       httpOnly: true,
       secure: true,
-      samsite: "none",
+      sameSite: "none",
       expires: 60 * 60 * 24 * 7 * 1000,
     });
     res.cookie("userId", user._id.toString(), {
       httpOnly: true,
       secure: true,
-      samsite: "none",
+      sameSite: "none",
       expires: 60 * 60 * 24 * 7 * 1000,
     });
   }
