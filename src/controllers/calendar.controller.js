@@ -98,13 +98,13 @@ exports.saveGoogleUserAndCalendar = async (req, res, next) => {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-        expires: 60 * 60 * 24 * 7 * 1000,
+        expires: new Date(Date.now() + 60 * 60 * 24 * 7 * 1000),
       });
       res.cookie("userId", user._id.toString(), {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-        expires: 60 * 60 * 24 * 7 * 1000,
+        expires: new Date(Date.now() + 60 * 60 * 24 * 7 * 1000),
       });
     }
 
@@ -184,13 +184,13 @@ exports.saveOutlookUserAndCalendar = async (req, res, next) => {
       httpOnly: true,
       secure: true,
       sameSite: "none",
-      expires: 60 * 60 * 24 * 7 * 1000,
+      expires: new Date(Date.now() + 60 * 60 * 24 * 7 * 1000),
     });
     res.cookie("userId", user._id.toString(), {
       httpOnly: true,
       secure: true,
       sameSite: "none",
-      expires: 60 * 60 * 24 * 7 * 1000,
+      expires: new Date(Date.now() + 60 * 60 * 24 * 7 * 1000),
     });
   }
 
