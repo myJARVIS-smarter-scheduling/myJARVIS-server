@@ -94,26 +94,18 @@ exports.saveGoogleUserAndCalendar = async (req, res, next) => {
     await user.save();
 
     if (!userId) {
-      res.cookie(
-        "accessToken",
-        user.accessToken,
-        {},
-        {
-          httpOnly: true,
-          secure: true,
-          expires: user.tokenExpiredAt,
-        },
-      );
-      res.cookie(
-        "userId",
-        user._id.toString(),
-        {},
-        {
-          httpOnly: true,
-          secure: true,
-          expires: user.tokenExpiredAt,
-        },
-      );
+      res.cookie("accessToken", user.accessToken, {
+        httpOnly: true,
+        secure: true,
+        samsite: "none",
+        expires: user.tokenExpiredAt,
+      });
+      res.cookie("userId", user._id.toString(), {
+        httpOnly: true,
+        secure: true,
+        samsite: "none",
+        expires: user.tokenExpiredAt,
+      });
     }
 
     res.redirect(process.env.HOME_REDIRECT_URL);
@@ -188,26 +180,18 @@ exports.saveOutlookUserAndCalendar = async (req, res, next) => {
   await user.save();
 
   if (!userId) {
-    res.cookie(
-      "accessToken",
-      user.accessToken,
-      {},
-      {
-        httpOnly: true,
-        secure: true,
-        expires: 60 * 60 * 24 * 7 * 1000,
-      },
-    );
-    res.cookie(
-      "userId",
-      user._id.toString(),
-      {},
-      {
-        httpOnly: true,
-        secure: true,
-        expires: 60 * 60 * 24 * 7 * 1000,
-      },
-    );
+    res.cookie("accessToken", user.accessToken, {
+      httpOnly: true,
+      secure: true,
+      samsite: "none",
+      expires: 60 * 60 * 24 * 7 * 1000,
+    });
+    res.cookie("userId", user._id.toString(), {
+      httpOnly: true,
+      secure: true,
+      samsite: "none",
+      expires: 60 * 60 * 24 * 7 * 1000,
+    });
   }
 
   const eventPromiseList = user.accountList.map(async (accountdata) => {
