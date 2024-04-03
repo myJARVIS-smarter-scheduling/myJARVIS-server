@@ -54,7 +54,9 @@ exports.createCalendarEvent = async (req, res, next) => {
       newEvent,
       isAllDayEvent,
     );
-  } else if (provider === "microsoft") {
+  }
+
+  if (provider === "microsoft") {
     resultOfCalendarEvent = await createOutlookCalendarEvent(
       accountId,
       accountToken,
@@ -122,7 +124,7 @@ exports.deleteCalendarEvent = async (req, res, next) => {
   const eventIdOfMongoDB = req.params.eventId;
   const { accountId } = req.body;
   const account = await Account.findById(accountId);
-  const { provider } = account;
+  const { accessToken, provider } = account;
 
   try {
     const event = await Event.findById(eventIdOfMongoDB);
@@ -132,11 +134,10 @@ exports.deleteCalendarEvent = async (req, res, next) => {
       await Event.deleteOne({ _id: eventIdOfMongoDB });
     }
 
-    // TODO: 추후 기능 구현을 위한 분기처리입니다.
-    /*  if (provider === "microsoft") {
-      await deleteOutlookCalendarEvent(accountId, accessToken, event);
+    if (provider === "microsoft") {
+      await deleteOutlookCalendarEvent(accessToken, event);
       await Event.deleteOne({ _id: eventIdOfMongoDB });
-    } */
+    }
 
     res.status(200).send({ result: "success" });
   } catch (error) {
