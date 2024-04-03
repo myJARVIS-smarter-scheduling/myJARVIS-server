@@ -41,6 +41,8 @@ exports.createCalendarEvent = async (req, res, next) => {
     eventId: tempEventId,
   };
 
+  console.log("newEvent:", newEvent);
+
   await Event.create(newEvent);
 
   let resultOfCalendarEvent;
@@ -52,7 +54,7 @@ exports.createCalendarEvent = async (req, res, next) => {
       newEvent,
       isAllDayEvent,
     );
-  } else if (provider === "outlook") {
+  } else if (provider === "mircosoft") {
     resultOfCalendarEvent = await createOutlookCalendarEvent(
       accountId,
       accountToken,
