@@ -5,7 +5,6 @@ const { getAsanaTokens } = require("../services/getAsanaAuth");
 const { saveAsanaUserInfo } = require("../services/saveUserInfo");
 
 exports.getAsanaUser = async (req, res, next) => {
-  console.log("getAsanaUser");
   const { code } = req.query;
   const { userId } = req.cookies;
   console.log(code);
@@ -13,7 +12,6 @@ exports.getAsanaUser = async (req, res, next) => {
   try {
     const response = await getAsanaTokens(code);
     const accessToken = response.access_token;
-    console.log("아사나 accessToken:", accessToken);
 
     await saveAsanaUserInfo(userId, response);
 

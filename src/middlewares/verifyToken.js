@@ -104,7 +104,6 @@ const refreshAsanaTokens = async (asanaDataId) => {
 
 exports.verifyToken = async (req, res, next) => {
   const { userId, accessToken } = req.cookies;
-  const { provider } = req.body;
 
   if (!userId || !accessToken) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -112,6 +111,7 @@ exports.verifyToken = async (req, res, next) => {
 
   try {
     const user = await User.findById(userId);
+    const userProvider = user.provider;
     const asanaUser = await AsanaUser.findOne({ userId });
 
     if (!user) {
@@ -119,23 +119,25 @@ exports.verifyToken = async (req, res, next) => {
     }
 
     await refreshAccountTokens(user.accountList);
-    await refreshUserToken(user, provider);
+    await refreshUserToken(user, userProvider);
 
     if (asanaUser) {
       const asanaDataId = asanaUser._id;
       await refreshAsanaTokens(asanaDataId);
     }
 
-    if (provider === "google") {
+    if (userProvider === "google") {
       res.cookie("accessToken", user.accessToken, {
         httpOnly: true,
         secure: true,
+        sameSite: "none",
         expires: new Date(user.tokenExpiredAt),
       });
 
       res.cookie("userId", user._id.toString(), {
         httpOnly: true,
         secure: true,
+        sameSite: "none",
         expires: new Date(user.tokenExpiredAt),
       });
     }

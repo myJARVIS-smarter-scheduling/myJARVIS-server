@@ -172,7 +172,6 @@ exports.transferAsanaTasks = async (req, res, next) => {
 };
 
 exports.completeAsanaTask = async (req, res, next) => {
-  console.log("Asana task completing...");
   const { userId } = req.cookies;
   const { taskKey } = req.body;
   const asanaUser = await AsanaUser.findOne({ userId });
