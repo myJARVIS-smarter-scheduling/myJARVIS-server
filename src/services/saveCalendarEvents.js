@@ -1,11 +1,14 @@
 /* eslint-disable */
 const { Event } = require("../models/Event");
-const { User } = require("../models/User");
-
-const { fetchCalendarEvents } = require("./getCalendarEvents");
+const { TIMEZONE_LIST } = require("../constants/timezone");
 const { convertTimezoneWithDST } = require("./convertDateWithTimezone");
 
-exports.saveCalendarEvents = async (accountId, events, provider, timezone) => {
+exports.saveCalendarEvents = async (
+  accountId,
+  events,
+  provider,
+  userTimezone
+) => {
   try {
     const eventPromises = events.map(async (event) => {
       let convertedStartWithUserTimezone;
@@ -15,18 +18,33 @@ exports.saveCalendarEvents = async (accountId, events, provider, timezone) => {
         convertedStartWithUserTimezone = await convertTimezoneWithDST(
           event.start.dateTime,
           provider,
-          timezone
+          userTimezone
         );
 
         convertedEndWithUserTimezone = await convertTimezoneWithDST(
           event.end.dateTime,
           provider,
-          timezone
+          userTimezone
         );
       }
 
       const eventId = event.id;
       const existingEvent = await Event.findOne({ eventId });
+      const eventTimezone = TIMEZONE_LIST.find(
+        (timezone) =>
+          timezone.alt === event.originalStartTimeZone ||
+          timezone.value === event.originalStartTimeZone
+      );
+
+      let formattedEventTimezone;
+
+      if (provider === "microsoft") {
+        event.originalStartTimeZone === "UTC"
+          ? (formattedEventTimezone = userTimezone)
+          : (formattedEventTimezone = eventTimezone?.value
+              ? eventTimezone.value
+              : userTimezone);
+      }
 
       const newEventData = {
         accountId,
@@ -36,10 +54,7 @@ exports.saveCalendarEvents = async (accountId, events, provider, timezone) => {
             ? event.location
             : event.location?.displayName || "No place",
         timezone:
-          provider === "google"
-            ? event.start.timeZone
-            : // : event.originalStartTimeZone || timezone,
-              timezone, // 우선적으로 사용자의 타임존을 사용합니다.
+          provider === "google" ? event.start.timeZone : formattedEventTimezone,
         attendees:
           provider === "google"
             ? event.attendees?.map((attendee) => attendee.email)
@@ -48,11 +63,11 @@ exports.saveCalendarEvents = async (accountId, events, provider, timezone) => {
         startAt:
           provider === "google"
             ? new Date(event.start.dateTime || event.start.date)
-            : new Date(convertedStartWithUserTimezone),
+            : convertedStartWithUserTimezone,
         endAt:
           provider === "google"
             ? new Date(event.end.dateTime || event.end.date)
-            : new Date(convertedEndWithUserTimezone),
+            : convertedEndWithUserTimezone,
         provider,
         eventId,
       };
@@ -73,81 +88,6 @@ exports.saveCalendarEvents = async (accountId, events, provider, timezone) => {
     return eventList;
   } catch (error) {
     console.log("Error saving calendar events:", error);
-
-    throw error;
-  }
-};
-
-exports.updateCalendarEventsFromWebhook = async (targetAccount) => {
-  try {
-    const accountId = targetAccount._id.toString();
-    const userId = targetAccount.userId;
-    const user = User.findById(userId);
-    const userTimezone = user.timezone;
-
-    const eventList = await fetchCalendarEvents(targetAccount);
-    const eventDatabse = await Event.find({ accountId: targetAccount._id });
-
-    for (const event of eventList) {
-      const existingEvent = await Event.findOne({ eventId: event.id });
-
-      if (!existingEvent) {
-        console.log(`Event ${event.id} is new. it will be saved.`);
-
-        const newEvent = {
-          accountId,
-          title: event.summary || event.subject,
-          place:
-            typeof event.location === "string"
-              ? event.location
-              : event.location?.displayName || "No place",
-          timezone: event.start.timeZone || userTimezone,
-          attendees: event.attendees?.map((attendee) => attendee.email),
-          description:
-            event.description || event.bodyPreview || "No description",
-          startAt: new Date(event.start.dateTime || event.start.date),
-          endAt: new Date(event.end.dateTime || event.end.date),
-          provider,
-          eventId: event.id,
-        };
-
-        await Event.create(newEvent);
-      } else {
-        console.log(`Event ${event.id} already exists. it will be updated.`);
-
-        await Event.findOneAndUpdate(
-          { eventId: event.id },
-          {
-            title: event.summary || event.subject,
-            place:
-              typeof event.location === "string"
-                ? event.location
-                : event.location?.displayName || "No place",
-            timezone: event.start.timeZone || userTimezone,
-            attendees: event.attendees?.map((attendee) => attendee.email),
-            description:
-              event.description || event.bodyPreview || "No description",
-            startAt: new Date(event.start.dateTime || event.start.date),
-            endAt: new Date(event.end.dateTime || event.end.date),
-          },
-          { new: true }
-        );
-      }
-    }
-
-    for (const dbEvent of eventDatabse) {
-      const existingEvent = eventList.find(
-        (event) => event.id === dbEvent.eventId
-      );
-
-      if (!existingEvent) {
-        console.log(`Event ${dbEvent.eventId} is deleted. it will be removed.`);
-
-        await Event.findOneAndDelete({ eventId: dbEvent.eventId });
-      }
-    }
-  } catch (error) {
-    console.error("Error fetching changed events:", error);
 
     throw error;
   }

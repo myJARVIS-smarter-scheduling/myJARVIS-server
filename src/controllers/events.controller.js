@@ -8,7 +8,7 @@ const {
 } = require("../services/handleGoogleCalendarEvents");
 const {
   createOutlookCalendarEvent,
-  // updateOutlookCalendarEvent, TODO. 마이크로소프트 업데이트 이벤트 서비스를 추가합니다.
+  updateOutlookCalendarEvent,
   deleteOutlookCalendarEvent,
 } = require("../services/handleMicrosoftCalendarEvents");
 
@@ -38,10 +38,9 @@ exports.createCalendarEvent = async (req, res, next) => {
     startAt,
     endAt,
     provider,
+    isAllDay: isAllDayEvent,
     eventId: tempEventId,
   };
-
-  console.log("newEvent:", newEvent);
 
   await Event.create(newEvent);
 
@@ -52,7 +51,6 @@ exports.createCalendarEvent = async (req, res, next) => {
     resultOfCalendarEvent = await createGoogleCalendarEvent(
       accountId,
       newEvent,
-      isAllDayEvent,
     );
   }
 
@@ -85,12 +83,19 @@ exports.updateCalendarEvent = async (req, res, next) => {
   try {
     const event = await Event.findById(eventIdOfMongoDB);
     const accountId = event.accountId.toString();
+    const account = await Account.findById(accountId);
+    const accountToken = account.accessToken;
+    const updatedStartAt = new Date(startAt);
+    const updatedEndAt = new Date(endAt);
 
     event.set({
       title,
       place,
+      startAt: updatedStartAt,
+      endAt: updatedEndAt,
       timezone,
       description,
+      isAllDay: isAllDayEvent,
     });
 
     const updatedEventData = await event.save();
@@ -101,18 +106,17 @@ exports.updateCalendarEvent = async (req, res, next) => {
       resultOfCalendarUpdate = await updateGoogleCalendarEvent(
         accountId,
         updatedEventData,
-        isAllDayEvent,
+        // isAllDayEvent
       );
     }
 
-    // TODO: 추후 기능 구현을 위한 분기처리입니다.
-    /*  if (provider === "microsoft") {
+    if (provider === "microsoft") {
       resultOfCalendarUpdate = await updateOutlookCalendarEvent(
-        accountId,
         accountToken,
-        newEvent
+        accountId,
+        updatedEventData,
       );
-    } */
+    }
 
     res.status(200).send({ result: "success", resultOfCalendarUpdate });
   } catch (error) {

@@ -9,7 +9,9 @@ exports.convertTimezoneWithDST = async (date, provider, targetTimezoneId) => {
   if (provider === "google") {
     utcDate = typeof date === "string" ? convertUtcDate(date) : date;
   } else {
-    utcDate = new Date(date);
+    const formattedDate = new Date(date).toISOString();
+
+    utcDate = new Date(formattedDate);
   }
 
   const timestamp = utcDate.getTime() / 1000;
@@ -46,11 +48,14 @@ exports.convertTimezoneWithoutDST = async (
   targetTimezoneId,
 ) => {
   let utcDate;
+  console.log("date:", date);
+  console.log("targetTimezoneId", targetTimezoneId);
 
   if (provider === "google") {
     utcDate = typeof date === "string" ? convertUtcDate(date) : date;
   } else {
-    utcDate = new Date(date);
+    const formattedDate = new Date(date).toLocaleString();
+    utcDate = typeof date === "string" ? convertUtcDate(formattedDate) : date;
   }
 
   const timestamp = utcDate.getTime() / 1000;
@@ -60,7 +65,7 @@ exports.convertTimezoneWithoutDST = async (
     (timezone) =>
       timezone.value === targetTimezoneId || timezone.alt === targetTimezoneId,
   );
-
+  console.log("eventTimeZone", eventTimeZone);
   try {
     const response = await axios.get(timezoneUrl, {
       params: {
@@ -73,6 +78,7 @@ exports.convertTimezoneWithoutDST = async (
     const timezoneData = await response.data;
     const utcOffset = timezoneData.rawOffset;
     const targetTime = new Date((timestamp + utcOffset) * 1000);
+    console.log("targetTime:", targetTime);
 
     return targetTime;
   } catch (error) {
