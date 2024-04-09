@@ -3,6 +3,7 @@ module.exports = {
     browser: true,
     commonjs: true,
     es2021: true,
+    jest: true,
   },
   ignorePatterns: ["setup.js", "*.spec.js"],
   extends: ["airbnb", "plugin:prettier/recommended"],
@@ -27,5 +28,6 @@ module.exports = {
     "func-names": "off",
     "no-unused-vars": "warn",
     "no-param-reassign": 0,
+    "import/no-extraneous-dependencies": ["error", { devDependencies: true }],
   },
 };
