@@ -5,8 +5,6 @@ const { saveCalendarEvents } = require("../services/saveCalendarEvents");
 const { User, Account } = require("../models/User");
 const { Event } = require("../models/Event");
 
-// TODO. 추후 유저정보 저장과 캘린더정보 저장 로직을 분리합니다.
-// NOTE. msal 인스턴스 캐싱 이슈로 인해 마이크로소프트 인증은 클라이언트로 이동합니다.
 exports.saveGoogleUserAndCalendar = async (req, res, next) => {
   const { code } = req.query;
   const { userId } = req.cookies;
@@ -133,7 +131,6 @@ exports.saveOutlookUserAndCalendar = async (req, res, next) => {
       language: mailboxSettings.locale,
       provider,
       accessToken,
-      // TODO: 추후 channelId, resourceId 추가
     });
 
     await user.save();

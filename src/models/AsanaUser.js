@@ -4,9 +4,9 @@ const { Schema } = mongoose;
 
 const asanaWorksSpaceSchema = new mongoose.Schema({
   asanaId: { type: Schema.Types.ObjectId, ref: "AsanaUser", required: true },
-  name: { type: String, required: true }, // name
-  workspaceKey: { type: String, required: true, unique: true }, // gid
-  type: { type: String, required: true }, // "resource_type"
+  name: { type: String, required: true },
+  workspaceKey: { type: String, required: true, unique: true },
+  type: { type: String, required: true },
 });
 
 const asanaUserSchema = new mongoose.Schema({

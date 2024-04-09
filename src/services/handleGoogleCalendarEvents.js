@@ -11,11 +11,7 @@ const {
 const { formatDate } = require("../utils/parsetDateformat");
 const { TIMEZONE_LIST } = require("../constants/timezone");
 
-exports.createGoogleCalendarEvent = async (
-  accountId,
-  newEventData,
-  isAllDayEvent,
-) => {
+exports.createGoogleCalendarEvent = async (accountId, newEventData) => {
   const account = await Account.findById(accountId);
   const user = await User.findById(account.userId);
   const userTimezone = user.timezone;
@@ -33,7 +29,7 @@ exports.createGoogleCalendarEvent = async (
 
   const eventPlace = newEventData.place || "No place";
   const eventDescription = newEventData.description || "No description";
-  const { startAt, endAt, timezone } = newEventData;
+  const { startAt, endAt, timezone, isAllDay } = newEventData;
   const startAtDate = new Date(startAt);
   const endAtDate = new Date(endAt);
 
@@ -41,8 +37,7 @@ exports.createGoogleCalendarEvent = async (
   let convertedStartAt;
   let convertedEndAt;
 
-  // TODO. 업데이트와 중복되는 로직이 많으므로 모듈화를 고려합니다.
-  if (!isAllDayEvent && hasTimezoneSetting) {
+  if (!isAllDay && hasTimezoneSetting) {
     const startAtWithSelectedTimezone = await convertTimezoneWithoutDST(
       startAt,
       account.provider,
@@ -69,7 +64,7 @@ exports.createGoogleCalendarEvent = async (
     convertedEndAt = endAtWithUserTimezone;
   }
 
-  const eventStart = isAllDayEvent
+  const eventStart = isAllDay
     ? { date: formatDate(newEventData.startAt) }
     : {
         dateTime: hasTimezoneSetting
@@ -77,7 +72,7 @@ exports.createGoogleCalendarEvent = async (
           : startAtDate.toISOString(),
         timeZone: newEventData.timezone.trim(),
       };
-  const eventEnd = isAllDayEvent
+  const eventEnd = isAllDay
     ? { date: formatDate(newEventData.endAt) }
     : {
         dateTime: hasTimezoneSetting
@@ -86,6 +81,8 @@ exports.createGoogleCalendarEvent = async (
         timeZone: newEventData.timezone.trim(),
       };
 
+  console.log("eventStart:", eventStart);
+  console.log("eventEnd:", eventEnd);
   const newEvent = {
     summary: newEventData.title,
     location: eventPlace,
@@ -93,6 +90,8 @@ exports.createGoogleCalendarEvent = async (
     start: eventStart,
     end: eventEnd,
   };
+
+  console.log("구글 newEvent:", newEvent);
 
   try {
     const response = await calendar.events.insert({
@@ -102,19 +101,20 @@ exports.createGoogleCalendarEvent = async (
 
     console.log("Google Calendar event created successfully:", response.data);
 
-    // TODO. 데이터베이스 업데이트 로직은 이벤트 컨트롤러로의 분리를 고려합니다.
-    await Event.findOneAndUpdate(
+    const savedNewData = await Event.findOneAndUpdate(
       { eventId: newEventData.eventId },
       {
         $set: {
           eventId: response.data.id,
-          timeZone: eventStart.timeZone,
+          timezone: eventStart.timeZone,
           startAt: eventStart.dateTime || eventStart.date,
           endAt: eventEnd.dateTime || eventEnd.date,
         },
       },
       { new: true },
     );
+
+    console.log("savedNewData:", savedNewData);
 
     return response.data;
   } catch (error) {
@@ -124,11 +124,7 @@ exports.createGoogleCalendarEvent = async (
   }
 };
 
-exports.updateGoogleCalendarEvent = async (
-  accountId,
-  updatedEventData,
-  isAllDayEvent,
-) => {
+exports.updateGoogleCalendarEvent = async (accountId, updatedEventData) => {
   const account = await Account.findById(accountId);
   const user = await User.findById(account.userId);
   const userTimezone = user.timezone;
@@ -148,7 +144,7 @@ exports.updateGoogleCalendarEvent = async (
   const originalEventData = await Event.findOne({ eventId: originalEventKey });
   const originalEventTimezone = originalEventData.timezone;
 
-  const { startAt, endAt, timezone } = updatedEventData;
+  const { startAt, endAt, timezone, isAllDay } = updatedEventData;
   const startAtDate = new Date(startAt);
   const endAtDate = new Date(endAt);
 
@@ -156,7 +152,7 @@ exports.updateGoogleCalendarEvent = async (
   let convertedStartAt;
   let convertedEndAt;
 
-  if (!isAllDayEvent && hasTimezoneSetting) {
+  if (!isAllDay && hasTimezoneSetting) {
     const startAtWithSelectedTimezone = await convertTimezoneWithoutDST(
       startAt,
       account.provider,
@@ -170,12 +166,12 @@ exports.updateGoogleCalendarEvent = async (
 
     const startAtWithUserTimezone = await convertTimezoneWithDST(
       startAtWithSelectedTimezone,
-      formattedUserTimezone,
+      account.provider,
       formattedUserTimezone,
     );
     const endAtWithUserTimezone = await convertTimezoneWithDST(
       endAtWithSelectedTimezone,
-      formattedUserTimezone,
+      account.provider,
       formattedUserTimezone,
     );
 
@@ -183,7 +179,7 @@ exports.updateGoogleCalendarEvent = async (
     convertedEndAt = endAtWithUserTimezone;
   }
 
-  const eventStart = isAllDayEvent
+  const eventStart = isAllDay
     ? { date: updatedEventData.startAt.substring(0, 10) }
     : {
         dateTime: hasTimezoneSetting
@@ -191,7 +187,7 @@ exports.updateGoogleCalendarEvent = async (
           : startAtDate.toISOString(),
         timeZone: updatedEventData.timezone.trim(),
       };
-  const eventEnd = isAllDayEvent
+  const eventEnd = isAllDay
     ? { date: updatedEventData.endAt.substring(0, 10) }
     : {
         dateTime: hasTimezoneSetting
@@ -215,12 +211,11 @@ exports.updateGoogleCalendarEvent = async (
       resource: updatedEvent,
     });
 
-    // TODO. 데이터베이스 업데이트 로직은 이벤트 컨트롤러로의 분리를 고려합니다.
     await Event.findOneAndUpdate(
       { eventId: response.data.eventId },
       {
         $set: {
-          timeZone: eventStart.timeZone || updatedEventData.timezone.trim(),
+          timezone: eventStart.timeZone || updatedEventData.timezone.trim(),
           startAt: eventStart.dateTime || eventStart.date,
           endAt: eventEnd.dateTime || eventEnd.date,
         },
