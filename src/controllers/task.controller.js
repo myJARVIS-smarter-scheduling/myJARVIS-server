@@ -36,7 +36,6 @@ exports.fetchAsanaTasks = async (req, res, next) => {
   const asanaUserAccessToken = asanaUser.accessToken;
 
   try {
-    // TODO: 해당 함수는 분리하여 태스크 생성에도 사용합니다.
     const tasksRequests = asanaUser.workspaces.map(async (workspace) => {
       const params = new URLSearchParams({
         workspace: workspace.workspaceKey,
@@ -154,6 +153,8 @@ exports.transferAsanaTasks = async (req, res, next) => {
     });
 
     const taskList = await Promise.all(taskPromiseList);
+    console.log("taskList", taskList);
+    console.log("tasks", taskList[0].task);
     const asanaUserInfo = {
       name: asanaUser.name,
       email: asanaUser.email,
@@ -199,66 +200,3 @@ exports.completeAsanaTask = async (req, res, next) => {
     throw error;
   }
 };
-
-// TODO. 추후 모든 기능이 완료되고 난 후 추가 작업 및 연결 작업 진행합니다.
-exports.createAsanaTask = async (req, res, next) => {
-  const { userId, accessToken } = req.cookies;
-  const { asanaId, workspaceId, taskInfo } = req.body;
-
-  try {
-    const asanaUser = await AsanaUser.findById(asanaId);
-    const workspace = await AsanaWorkspace.findById(workspaceId);
-
-    const response = await axios.post(
-      `https://app.asana.com/api/1.0/tasks`,
-      { data: taskInfo },
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-      },
-    );
-
-    const createdTask = response.data.data;
-    const createdTaskKey = createdTask.gid;
-
-    console.log("Task created:", response.data);
-  } catch (error) {
-    console.error("Error creating Asana task:", error);
-
-    throw error;
-  }
-};
-
-// TODO. 추후 모든 기능이 완료되고 난 후 클라이언트와 연결 작업 진행합니다.
-exports.updateAsanaTask = async (req, res, next) => {
-  const { accessToken } = req.cookies;
-  const { taskKey, updatedTask, taskId } = req.body;
-
-  try {
-    const response = await axios.put(
-      `https://app.asana.com/api/1.0/tasks/${taskKey}`,
-      { data: updatedTask },
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-      },
-    );
-
-    const targetTask = await AsanaTask.findByIdAndUpdate(taskId, updatedTask, {
-      new: true,
-    });
-
-    res.status(200).send({ result: "success", updatedTask: targetTask });
-  } catch (error) {
-    console.error("Error updating Asana task:", error);
-
-    throw error;
-  }
-};
-
-// TODO. 추후 모든 기능이 완료되고 난 후 작업 진행합니다.
-// exports.deleteAsanaTask = async (req, res, next) => {};
