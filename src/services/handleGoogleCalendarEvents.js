@@ -64,8 +64,14 @@ exports.createGoogleCalendarEvent = async (accountId, newEventData) => {
     convertedEndAt = endAtWithUserTimezone;
   }
 
+  if (isAllDay) {
+    startAtDate.setHours(0, 0, 0, 0);
+    endAtDate.setDate(endAtDate.getDate() + 1);
+    endAtDate.setHours(0, 0, 0, 0);
+  }
+
   const eventStart = isAllDay
-    ? { date: formatDate(newEventData.startAt) }
+    ? { date: formatDate(startAtDate) }
     : {
         dateTime: hasTimezoneSetting
           ? convertedStartAt.toISOString()
@@ -73,7 +79,7 @@ exports.createGoogleCalendarEvent = async (accountId, newEventData) => {
         timeZone: newEventData.timezone.trim(),
       };
   const eventEnd = isAllDay
-    ? { date: formatDate(newEventData.endAt) }
+    ? { date: formatDate(endAtDate) }
     : {
         dateTime: hasTimezoneSetting
           ? convertedEndAt.toISOString()
@@ -81,8 +87,6 @@ exports.createGoogleCalendarEvent = async (accountId, newEventData) => {
         timeZone: newEventData.timezone.trim(),
       };
 
-  console.log("eventStart:", eventStart);
-  console.log("eventEnd:", eventEnd);
   const newEvent = {
     summary: newEventData.title,
     location: eventPlace,
@@ -90,8 +94,6 @@ exports.createGoogleCalendarEvent = async (accountId, newEventData) => {
     start: eventStart,
     end: eventEnd,
   };
-
-  console.log("구글 newEvent:", newEvent);
 
   try {
     const response = await calendar.events.insert({
@@ -101,7 +103,7 @@ exports.createGoogleCalendarEvent = async (accountId, newEventData) => {
 
     console.log("Google Calendar event created successfully:", response.data);
 
-    const savedNewData = await Event.findOneAndUpdate(
+    await Event.findOneAndUpdate(
       { eventId: newEventData.eventId },
       {
         $set: {
@@ -114,8 +116,6 @@ exports.createGoogleCalendarEvent = async (accountId, newEventData) => {
       { new: true },
     );
 
-    console.log("savedNewData:", savedNewData);
-
     return response.data;
   } catch (error) {
     console.error("Create connected calendar error:", error);
@@ -124,7 +124,11 @@ exports.createGoogleCalendarEvent = async (accountId, newEventData) => {
   }
 };
 
-exports.updateGoogleCalendarEvent = async (accountId, updatedEventData) => {
+exports.updateGoogleCalendarEvent = async (
+  accountId,
+  updatedEventData,
+  eventId,
+) => {
   const account = await Account.findById(accountId);
   const user = await User.findById(account.userId);
   const userTimezone = user.timezone;
@@ -140,39 +144,46 @@ exports.updateGoogleCalendarEvent = async (accountId, updatedEventData) => {
 
   const calendar = google.calendar({ version: "v3", auth: googleOAuth2Client });
 
-  const originalEventKey = updatedEventData.eventId;
-  const originalEventData = await Event.findOne({ eventId: originalEventKey });
-  const originalEventTimezone = originalEventData.timezone;
-
   const { startAt, endAt, timezone, isAllDay } = updatedEventData;
   const startAtDate = new Date(startAt);
   const endAtDate = new Date(endAt);
 
-  const hasTimezoneSetting = originalEventTimezone !== timezone;
+  const hasTimezoneSetting = formattedUserTimezone !== timezone;
   let convertedStartAt;
   let convertedEndAt;
 
+  if (isAllDay) {
+    startAtDate.setHours(0, 0, 0, 0);
+    endAtDate.setDate(endAtDate.getDate() + 1);
+    endAtDate.setHours(0, 0, 0, 0);
+  }
+
   if (!isAllDay && hasTimezoneSetting) {
+    const isCalendarEvent = false;
     const startAtWithSelectedTimezone = await convertTimezoneWithoutDST(
       startAt,
       account.provider,
       timezone,
+      isCalendarEvent,
     );
     const endAtWithSelectedTimezone = await convertTimezoneWithoutDST(
       endAt,
       account.provider,
       timezone,
+      isCalendarEvent,
     );
 
     const startAtWithUserTimezone = await convertTimezoneWithDST(
       startAtWithSelectedTimezone,
       account.provider,
       formattedUserTimezone,
+      isCalendarEvent,
     );
     const endAtWithUserTimezone = await convertTimezoneWithDST(
       endAtWithSelectedTimezone,
       account.provider,
       formattedUserTimezone,
+      isCalendarEvent,
     );
 
     convertedStartAt = startAtWithUserTimezone;
@@ -180,7 +191,7 @@ exports.updateGoogleCalendarEvent = async (accountId, updatedEventData) => {
   }
 
   const eventStart = isAllDay
-    ? { date: updatedEventData.startAt.substring(0, 10) }
+    ? { date: formatDate(startAtDate) }
     : {
         dateTime: hasTimezoneSetting
           ? convertedStartAt.toISOString()
@@ -188,7 +199,7 @@ exports.updateGoogleCalendarEvent = async (accountId, updatedEventData) => {
         timeZone: updatedEventData.timezone.trim(),
       };
   const eventEnd = isAllDay
-    ? { date: updatedEventData.endAt.substring(0, 10) }
+    ? { date: formatDate(endAtDate) }
     : {
         dateTime: hasTimezoneSetting
           ? convertedEndAt.toISOString()
@@ -207,12 +218,12 @@ exports.updateGoogleCalendarEvent = async (accountId, updatedEventData) => {
   try {
     const response = await calendar.events.update({
       calendarId: "primary",
-      eventId: originalEventKey,
+      eventId,
       resource: updatedEvent,
     });
 
     await Event.findOneAndUpdate(
-      { eventId: response.data.eventId },
+      { eventId },
       {
         $set: {
           timezone: eventStart.timeZone || updatedEventData.timezone.trim(),
