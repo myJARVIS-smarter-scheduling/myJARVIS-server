@@ -9,8 +9,8 @@ const accountSchema = new mongoose.Schema({
   accessToken: { type: String, required: true },
   refreshToken: { type: String },
   tokenExpiredAt: { type: Date },
-  channelId: { type: String },
-  resourceId: { type: String },
+  // channelId: { type: String },
+  // resourceId: { type: String },
 });
 
 const userSchema = new mongoose.Schema({
