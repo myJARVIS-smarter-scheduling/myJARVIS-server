@@ -46,7 +46,6 @@ exports.createCalendarEvent = async (req, res, next) => {
 
   let resultOfCalendarEvent;
 
-  // TODO. 추후 provider에 따라 분기처리가 필요할 수 있습니다.
   if (provider === "google") {
     resultOfCalendarEvent = await createGoogleCalendarEvent(
       accountId,
@@ -66,6 +65,7 @@ exports.createCalendarEvent = async (req, res, next) => {
 };
 
 exports.updateCalendarEvent = async (req, res, next) => {
+  const { updatedEventData } = req.body;
   const {
     dataId,
     title,
@@ -76,7 +76,7 @@ exports.updateCalendarEvent = async (req, res, next) => {
     description,
     isAllDayEvent,
     provider,
-  } = req.body.updatedEventData;
+  } = updatedEventData;
 
   const eventIdOfMongoDB = dataId;
 
@@ -98,7 +98,7 @@ exports.updateCalendarEvent = async (req, res, next) => {
       isAllDay: isAllDayEvent,
     });
 
-    const updatedEventData = await event.save();
+    const updatedEvent = await event.save();
 
     let resultOfCalendarUpdate;
 
@@ -106,7 +106,7 @@ exports.updateCalendarEvent = async (req, res, next) => {
       resultOfCalendarUpdate = await updateGoogleCalendarEvent(
         accountId,
         updatedEventData,
-        // isAllDayEvent
+        updatedEvent.eventId,
       );
     }
 
@@ -115,10 +115,14 @@ exports.updateCalendarEvent = async (req, res, next) => {
         accountToken,
         accountId,
         updatedEventData,
+        updatedEvent.eventId,
       );
     }
 
-    res.status(200).send({ result: "success", resultOfCalendarUpdate });
+    console.log("resultOfCalendarUpdate", resultOfCalendarUpdate);
+    res
+      .status(200)
+      .send({ result: "success", updatedEvent: resultOfCalendarUpdate });
   } catch (error) {
     console.error(error);
   }

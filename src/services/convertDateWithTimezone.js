@@ -3,15 +3,24 @@ const axios = require("axios");
 const { TIMEZONE_LIST } = require("../constants/timezone");
 const { convertUtcDate } = require("../utils/parsetDateformat");
 
-exports.convertTimezoneWithDST = async (date, provider, targetTimezoneId) => {
+exports.convertTimezoneWithDST = async (
+  date,
+  provider,
+  targetTimezoneId,
+  isCalendarEvent = true,
+) => {
   let utcDate;
 
   if (provider === "google") {
     utcDate = typeof date === "string" ? convertUtcDate(date) : date;
-  } else {
-    const formattedDate = new Date(date).toISOString();
+  }
 
-    utcDate = new Date(formattedDate);
+  if (provider === "microsoft" && isCalendarEvent) {
+    utcDate = new Date(date);
+  }
+
+  if (provider === "microsoft" && !isCalendarEvent) {
+    utcDate = typeof date === "string" ? convertUtcDate(date) : date;
   }
 
   const timestamp = utcDate.getTime() / 1000;
@@ -46,16 +55,20 @@ exports.convertTimezoneWithoutDST = async (
   date,
   provider,
   targetTimezoneId,
+  isCalendarEvent = true,
 ) => {
   let utcDate;
-  console.log("date:", date);
-  console.log("targetTimezoneId", targetTimezoneId);
 
   if (provider === "google") {
     utcDate = typeof date === "string" ? convertUtcDate(date) : date;
-  } else {
-    const formattedDate = new Date(date).toLocaleString();
-    utcDate = typeof date === "string" ? convertUtcDate(formattedDate) : date;
+  }
+
+  if (provider === "microsoft" && isCalendarEvent) {
+    utcDate = new Date(date);
+  }
+
+  if (provider === "microsoft" && !isCalendarEvent) {
+    utcDate = typeof date === "string" ? convertUtcDate(date) : date;
   }
 
   const timestamp = utcDate.getTime() / 1000;
@@ -65,7 +78,7 @@ exports.convertTimezoneWithoutDST = async (
     (timezone) =>
       timezone.value === targetTimezoneId || timezone.alt === targetTimezoneId,
   );
-  console.log("eventTimeZone", eventTimeZone);
+
   try {
     const response = await axios.get(timezoneUrl, {
       params: {

@@ -38,7 +38,14 @@ exports.createOutlookCalendarEvent = async (
   let convertedStartAtWithUserTimezone;
   let convertedEndAtWithUserTimezone;
 
+  if (isAllDay) {
+    startAtDate.setHours(0, 0, 0, 0);
+    endAtDate.setDate(endAtDate.getDate() + 1);
+    endAtDate.setHours(0, 0, 0, 0);
+  }
+
   if (!isAllDay && hasTimezoneSetting) {
+    const isCalendarEvent = false;
     const parsedStartTime = convertUtcDate(startAt);
     const parsedEndTime = convertUtcDate(endAt);
     const formattedStartTime = new Date(parsedStartTime)
@@ -55,22 +62,26 @@ exports.createOutlookCalendarEvent = async (
       startAt,
       provider,
       formattedEventTimezone,
+      isCalendarEvent,
     );
     const endAtWithSelectedTimezone = await convertTimezoneWithoutDST(
       endAt,
       provider,
       formattedEventTimezone,
+      isCalendarEvent,
     );
 
     convertedStartAtWithUserTimezone = await convertTimezoneWithDST(
       startAtWithSelectedTimezone,
       provider,
       formattedUserTimezone,
+      isCalendarEvent,
     );
     convertedEndAtWithUserTimezone = await convertTimezoneWithDST(
       endAtWithSelectedTimezone,
       provider,
       formattedUserTimezone,
+      isCalendarEvent,
     );
   }
 
@@ -115,7 +126,7 @@ exports.createOutlookCalendarEvent = async (
 
     console.log("Outlook Calendar event created successfully:", response.data);
 
-    const savedData = await Event.findOneAndUpdate(
+    await Event.findOneAndUpdate(
       { eventId: newEventData.eventId },
       {
         $set: {
@@ -135,7 +146,6 @@ exports.createOutlookCalendarEvent = async (
       { new: true },
     );
 
-    console.log("savedData", savedData);
     return response.data;
   } catch (error) {
     console.error("Error creating event in Microsoft Calendar:", error);
@@ -148,15 +158,19 @@ exports.updateOutlookCalendarEvent = async (
   accessToken,
   accountId,
   updatedEventData,
+  eventId,
 ) => {
   const account = await Account.findById(accountId);
   const user = await User.findById(account.userId);
   const userTimezone = user.timezone;
-  const { startAt, endAt, timezone, isAllDay, provider, eventId } =
-    updatedEventData;
+  const { startAt, endAt, timezone, isAllDay, provider } = updatedEventData;
 
+  const startAtDate = new Date(startAt);
+  const endAtDate = new Date(endAt);
   let convertedStartAt;
   let convertedEndAt;
+  let convertedStartAtWithUserTimezone;
+  let convertedEndAtWithUserTimezone;
 
   const formattedUserTimezone = TIMEZONE_LIST.find(
     (timezoneData) =>
@@ -164,44 +178,62 @@ exports.updateOutlookCalendarEvent = async (
   ).value;
   const hasTimezoneSetting = formattedUserTimezone !== timezone;
 
+  if (isAllDay) {
+    startAt.setHours(0, 0, 0, 0);
+    endAt.setDate(endAtDate.getDate() + 1);
+    endAt.setHours(0, 0, 0, 0);
+  }
+
   if (!isAllDay && hasTimezoneSetting) {
+    const isCalendarEvent = false;
+    const parsedStartTime = convertUtcDate(startAt);
+    const parsedEndTime = convertUtcDate(endAt);
+    const formattedStartTime = new Date(parsedStartTime)
+      .toISOString()
+      .split(".")[0];
+    const formattedEndTime = new Date(parsedEndTime)
+      .toISOString()
+      .split(".")[0];
+
+    convertedStartAt = formattedStartTime;
+    convertedEndAt = formattedEndTime;
+
     const startAtWithSelectedTimezone = await convertTimezoneWithoutDST(
       startAt,
       provider,
       timezone,
+      isCalendarEvent,
     );
     const endAtWithSelectedTimezone = await convertTimezoneWithoutDST(
       endAt,
       provider,
       timezone,
+      isCalendarEvent,
     );
 
-    const startAtWithUserTimezone = await convertTimezoneWithDST(
+    convertedStartAtWithUserTimezone = await convertTimezoneWithDST(
       startAtWithSelectedTimezone,
       provider,
       formattedUserTimezone,
+      isCalendarEvent,
     );
-    const endAtWithUserTimezone = await convertTimezoneWithDST(
+    convertedEndAtWithUserTimezone = await convertTimezoneWithDST(
       endAtWithSelectedTimezone,
       provider,
       formattedUserTimezone,
+      isCalendarEvent,
     );
-
-    convertedStartAt = startAtWithUserTimezone;
-    convertedEndAt = endAtWithUserTimezone;
   }
 
   const updatedTimezone = hasTimezoneSetting ? timezone : formattedUserTimezone;
   const eventStart = {
     dateTime: hasTimezoneSetting
-      ? convertedStartAt.toLocaleString()
-      : startAt.toLocaleString(),
+      ? convertedStartAt
+      : startAtDate.toLocaleString(),
     timeZone: updatedTimezone,
   };
   const eventEnd = {
-    dateTime: hasTimezoneSetting
-      ? convertedEndAt.toLocaleString()
-      : endAt.toLocaleString(),
+    dateTime: hasTimezoneSetting ? convertedEndAt : endAtDate.toLocaleString(),
     timeZone: updatedTimezone,
   };
 
@@ -218,7 +250,6 @@ exports.updateOutlookCalendarEvent = async (
     },
     isAllDay: updatedEventData.isAllDay,
   };
-  console.log("포맷후 updatedEvent", updatedEvent);
 
   try {
     const response = await axios.patch(
@@ -230,6 +261,23 @@ exports.updateOutlookCalendarEvent = async (
           "Content-Type": "application/json",
         },
       },
+    );
+
+    await Event.findOneAndUpdate(
+      { eventId },
+      {
+        $set: {
+          timezone: updatedTimezone,
+          startAt: hasTimezoneSetting
+            ? convertedStartAtWithUserTimezone.toISOString()
+            : startAtDate.toISOString(),
+          endAt: hasTimezoneSetting
+            ? convertedEndAtWithUserTimezone.toISOString()
+            : endAtDate.toISOString(),
+          isAllDay: response.data.isAllDay,
+        },
+      },
+      { new: true },
     );
 
     console.log("Outlook Calendar event updated successfully:", response.data);
