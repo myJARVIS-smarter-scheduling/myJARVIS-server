@@ -1,10 +1,9 @@
 /* eslint-disable */
-
 const { google } = require("googleapis");
 const axios = require("axios");
 const { URLSearchParams } = require("url");
 
-const { User } = require("../models/User");
+const { User, Account } = require("../models/User");
 const { AsanaUser } = require("../models/AsanaUser");
 const {
   saveNewUserTokens,
@@ -37,6 +36,14 @@ const refreshUserToken = async (user, provider) => {
         credentials.expiry_date
       );
     }
+  } else {
+    const currentAccessToken = user.accessToken;
+
+    if (currentAccessToken !== user.refreshToken) {
+      await User.findByIdAndUpdate(user._id, {
+        accessToken: user.refreshToken,
+      });
+    }
   }
 };
 
@@ -61,6 +68,14 @@ const refreshAccountTokens = async (accounts) => {
             credentials.refresh_token,
             credentials.expiry_date
           );
+        }
+      } else {
+        const currentAccessToken = account.accessToken;
+
+        if (currentAccessToken !== account.refreshToken) {
+          await Account.findByIdAndUpdate(account._id, {
+            accessToken: account.refreshToken,
+          });
         }
       }
     })
@@ -111,7 +126,6 @@ exports.verifyToken = async (req, res, next) => {
 
   try {
     const user = await User.findById(userId);
-    const userProvider = user.provider;
     const asanaUser = await AsanaUser.findOne({ userId });
 
     if (!user) {
@@ -139,6 +153,19 @@ exports.verifyToken = async (req, res, next) => {
         secure: true,
         sameSite: "none",
         expires: new Date(user.tokenExpiredAt),
+      });
+    } else {
+      res.cookie("accessToken", user.accessToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        expires: new Date(Date.now() + 60 * 60 * 24 * 7 * 1000),
+      });
+      res.cookie("userId", user._id.toString(), {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        expires: new Date(Date.now() + 60 * 60 * 24 * 7 * 1000),
       });
     }
 

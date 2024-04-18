@@ -23,3 +23,10 @@ exports.asanaAuthHandler = async (req, res, next) => {
 
   res.redirect(asanaAuthBaseUrl.toString());
 };
+
+exports.googleLogout = async (req, res, next) => {
+  res.clearCookie("userId");
+  res.clearCookie("accessToken");
+
+  res.redirect("/");
+};
