@@ -9,21 +9,21 @@ exports.handleGoogleCalendarWebhook = async (req, res, next) => {
   console.log("Received Google calendar webhook");
 
   try {
-    const { clientState, resourceId } = req.body;
-    const account = await Account.findOne({ webhookId: clientState });
+    const channelID = req.headers["x-goog-channel-id"];
+    const resourceID = req.headers["x-goog-resource-id"];
+    const resourceState = req.headers["x-goog-resource-state"];
 
-    if (!account) {
-      console.log("No account matches the provided clientState");
+    const account = await Account.findOne({ webhookId: channelID });
 
-      return res.status(404).send("Account not found");
+    if (resourceState !== "sync") {
+      const changes = await fetchChangesFromGoogle(
+        account.accessToken,
+        resourceID,
+        resourceState,
+      );
+
+      await updateDatabaseWithChanges(account, changes);
     }
-
-    const changes = await fetchChangesFromGoogle(
-      account.accessToken,
-      resourceId,
-    );
-
-    await updateDatabaseWithChanges(account, changes);
 
     return res.status(200).send("Webhook processed successfully");
   } catch (error) {

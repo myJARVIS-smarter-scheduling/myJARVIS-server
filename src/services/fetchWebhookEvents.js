@@ -3,7 +3,11 @@ const { google } = require("googleapis");
 const googleOAuth2Client = require("../config/googleOAuthClient");
 const { Event } = require("../models/Event");
 
-exports.fetchChangesFromGoogle = async (accessToken, syncToken) => {
+exports.fetchChangesFromGoogle = async (
+  accessToken,
+  resourceId,
+  resourceState,
+) => {
   googleOAuth2Client.setCredentials({ access_token: accessToken });
 
   const calendar = google.calendar({ version: "v3", auth: googleOAuth2Client });
@@ -11,18 +15,19 @@ exports.fetchChangesFromGoogle = async (accessToken, syncToken) => {
   try {
     const response = await calendar.events.list({
       calendarId: "primary",
-      syncToken,
+      eventId: resourceId,
     });
 
     return response.data.items.map((event) => {
       const isAllDayEvent = !!event.start.date;
       const startAt = isAllDayEvent ? event.start.date : event.start.dateTime;
       const endAt = isAllDayEvent ? event.end.date : event.end.dateTime;
-      const isExistingEvent = Event.findOne({ eventId: event.id });
       let eventType;
 
-      if (isExistingEvent) {
-        eventType = event.status === "cancelled" ? "deleted" : "updated";
+      if (resourceState === "not_exists") {
+        eventType = "deleted";
+      } else if (resourceState === "exists") {
+        eventType = "updated";
       } else {
         eventType = "created";
       }
