@@ -1,6 +1,6 @@
 const axios = require("axios");
+const crypto = require("crypto");
 const { google } = require("googleapis");
-const { randomUUID } = require("crypto");
 const { Account } = require("../models/User");
 const googleOAuth2Client = require("../config/googleOAuthClient");
 
@@ -16,7 +16,7 @@ exports.setupGoogleWebhook = async (accountId, accessToken) => {
   }
 
   const calendar = google.calendar({ version: "v3", auth: googleOAuth2Client });
-  const uniqueId = randomUUID();
+  const uniqueId = crypto.randomUUID();
 
   try {
     const response = await calendar.events.watch({
@@ -31,10 +31,12 @@ exports.setupGoogleWebhook = async (accountId, accessToken) => {
 
     console.log("Google Webhook set up successfully:", response.data);
 
-    const expirationDate = new Date(parseInt(response.data.expiration, 10));
+    const expirationDate = new Date(
+      Date.now() + parseInt(response.data.expiration, 10),
+    );
 
     account.webhookId = uniqueId;
-    account.webhookExpiration = Date.now() + expirationDate;
+    account.webhookExpiration = expirationDate;
 
     await account.save();
   } catch (error) {
@@ -53,7 +55,7 @@ exports.setupMicrosoftWebhook = async (accountId, accessToken) => {
     return;
   }
 
-  const uniqueId = randomUUID();
+  const uniqueId = crypto.randomUUID();
 
   try {
     const response = await axios({
