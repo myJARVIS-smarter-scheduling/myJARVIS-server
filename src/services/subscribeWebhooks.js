@@ -16,7 +16,7 @@ exports.setupGoogleWebhook = async (accountId, accessToken) => {
   }
 
   const calendar = google.calendar({ version: "v3", auth: googleOAuth2Client });
-  const uniqueId = crypto.randomUUID();
+  const uniqueId = account.webhookId || crypto.randomUUID();
 
   try {
     const response = await calendar.events.watch({

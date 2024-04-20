@@ -12,6 +12,9 @@ exports.handleGoogleCalendarWebhook = async (req, res, next) => {
     const channelID = req.headers["x-goog-channel-id"];
     const resourceID = req.headers["x-goog-resource-id"];
     const resourceState = req.headers["x-goog-resource-state"];
+    console.log("channelID", channelID);
+    console.log("resourceID", resourceID);
+    console.log("resourceState", resourceState);
 
     const account = await Account.findOne({ webhookId: channelID });
 
