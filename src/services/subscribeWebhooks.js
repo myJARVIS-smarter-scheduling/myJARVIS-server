@@ -31,8 +31,10 @@ exports.setupGoogleWebhook = async (accountId, accessToken) => {
 
     console.log("Google Webhook set up successfully:", response.data);
 
+    const expirationDate = new Date(parseInt(response.data.expiration, 10));
+
     account.webhookId = uniqueId;
-    account.webhookExpiration = new Date(Date.now() + response.data.expiration);
+    account.webhookExpiration = Date.now() + expirationDate;
 
     await account.save();
   } catch (error) {
