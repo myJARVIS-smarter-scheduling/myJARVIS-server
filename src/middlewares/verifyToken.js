@@ -127,6 +127,7 @@ exports.verifyToken = async (req, res, next) => {
   try {
     const user = await User.findById(userId);
     const asanaUser = await AsanaUser.findOne({ userId });
+    const userProvider = user.provider;
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });

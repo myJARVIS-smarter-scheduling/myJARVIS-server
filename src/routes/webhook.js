@@ -4,13 +4,10 @@ const router = express.Router();
 
 const webhookController = require("../controllers/webhook.controller");
 
-router.post(
-  "/webhook/google/calendar",
-  webhookController.handleGoogleCalendarWebhook,
-);
+router.post("/google/calendar", webhookController.handleGoogleCalendarWebhook);
 
 router.post(
-  "/webhook/microsoft/calendar",
+  "/microsoft/calendar",
   webhookController.handleMicrosoftCalendarWebhook,
 );
 
