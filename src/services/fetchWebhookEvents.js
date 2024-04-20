@@ -1,6 +1,7 @@
 const axios = require("axios");
 const { google } = require("googleapis");
 const googleOAuth2Client = require("../config/googleOAuthClient");
+const { Event } = require("../models/Event");
 
 exports.fetchChangesFromGoogle = async (accessToken, syncToken) => {
   googleOAuth2Client.setCredentials({ access_token: accessToken });
@@ -17,18 +18,27 @@ exports.fetchChangesFromGoogle = async (accessToken, syncToken) => {
       const isAllDayEvent = !!event.start.date;
       const startAt = isAllDayEvent ? event.start.date : event.start.dateTime;
       const endAt = isAllDayEvent ? event.end.date : event.end.dateTime;
+      const isExistingEvent = Event.findOne({ eventId: event.id });
+      let eventType;
+
+      if (isExistingEvent) {
+        eventType = event.status === "cancelled" ? "deleted" : "updated";
+      } else {
+        eventType = "created";
+      }
 
       return {
         title: event.summary,
         place: event.location || "No place",
-        timezone: event.start.timeZone || "",
-        description: event.description || "",
+        timezone: event.start.timeZone,
+        description: event.description || "No description",
+        attendees: event.attendees?.map((attendee) => attendee.email),
         startAt,
         endAt,
         provider: "google",
         isAllDay: isAllDayEvent,
         eventId: event.id,
-        type: event.status === "cancelled" ? "deleted" : "updated",
+        type: eventType,
       };
     });
   } catch (error) {
@@ -49,23 +59,25 @@ exports.fetchChangesFromMicrosoft = async (accessToken, deltaLink) => {
     });
 
     const eventList = response.data.value.map((event) => {
-      const isAllDayEvent = event.isAllDay;
-      const startDateTime = isAllDayEvent
+      const startDateTime = event.isAllDay
         ? event.start.date
         : event.start.dateTime;
-      const endDateTime = isAllDayEvent ? event.end.date : event.end.dateTime;
+      const endDateTime = event.isAllDay ? event.end.date : event.end.dateTime;
 
       return {
         title: event.subject,
         place: event.location?.displayName || "No place",
         timezone: event.originalStartTimeZone,
         description: event.body.content || "No description",
+        attendees: event.attendees?.map(
+          (attendee) => attendee.emailAddress.name,
+        ),
         startAt: startDateTime,
         endAt: endDateTime,
         provider: "microsoft",
-        isAllDay: isAllDayEvent,
+        isAllDay: event.isAllDay,
         eventId: event.id,
-        type: event.status === "cancelled" ? "deleted" : "updated", // Assume 'updated' unless specified by `event.status`
+        type: event.changeType,
       };
     });
 

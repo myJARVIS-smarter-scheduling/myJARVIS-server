@@ -3,9 +3,7 @@ const {
   fetchChangesFromGoogle,
   fetchChangesFromMicrosoft,
 } = require("../services/fetchWebhookEvents");
-const {
-  updateDatabaseWithChanges,
-} = require("../services/handleWebhookChanges");
+const updateDatabaseWithChanges = require("../services/handleWebhookChanges");
 
 exports.handleGoogleCalendarWebhook = async (req, res, next) => {
   console.log("Received Google calendar webhook");

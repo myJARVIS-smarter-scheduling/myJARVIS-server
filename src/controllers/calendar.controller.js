@@ -2,6 +2,10 @@ const { googleLogin } = require("../services/getGoogleAuth");
 const { getGoogleUserInfo } = require("../services/getUserInfo");
 const { getGoogleCalendarEvents } = require("../services/getCalendarEvents");
 const { saveCalendarEvents } = require("../services/saveCalendarEvents");
+const {
+  setupGoogleWebhook,
+  setupMicrosoftWebhook,
+} = require("../services/subscribeWebhooks");
 const { User, Account } = require("../models/User");
 const { Event } = require("../models/Event");
 
@@ -66,6 +70,7 @@ exports.saveGoogleUserAndCalendar = async (req, res, next) => {
       });
 
       await account.save();
+      await setupGoogleWebhook(account._id, account.accessToken);
 
       user.accountList.push(account);
     } else {
@@ -157,6 +162,7 @@ exports.saveOutlookUserAndCalendar = async (req, res, next) => {
     });
 
     await account.save();
+    await setupMicrosoftWebhook(account._id, account.accessToken);
 
     user.accountList.push(account);
   } else {
@@ -198,7 +204,11 @@ exports.saveOutlookUserAndCalendar = async (req, res, next) => {
   });
 
   const accountEventList = await Promise.all(eventPromiseList);
-  const accountInfo = { email: user.email, timezone: user.timezone };
+  const accountInfo = {
+    email: user.email,
+    provider: user.provider,
+    timezone: user.timezone,
+  };
 
   return res.status(201).json({
     result: "success",
@@ -227,7 +237,11 @@ exports.transferCalendarEvents = async (req, res, next) => {
     });
 
     const accountEventList = await Promise.all(eventPromiseList);
-    const userInfo = { email: user.email, timezone: user.timezone };
+    const userInfo = {
+      email: user.email,
+      provider: user.provider,
+      timezone: user.timezone,
+    };
 
     return res.status(200).json({
       result: "success",
