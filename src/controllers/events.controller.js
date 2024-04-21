@@ -40,6 +40,7 @@ exports.createCalendarEvent = async (req, res, next) => {
     provider,
     isAllDay: isAllDayEvent,
     eventId: tempEventId,
+    etag: tempEventId,
   };
 
   await Event.create(newEvent);

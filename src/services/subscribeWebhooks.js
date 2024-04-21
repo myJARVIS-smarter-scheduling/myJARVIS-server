@@ -7,38 +7,43 @@ const googleOAuth2Client = require("../config/googleOAuthClient");
 exports.setupGoogleWebhook = async (accountId, accessToken) => {
   googleOAuth2Client.setCredentials({ access_token: accessToken });
 
+  const calendar = google.calendar({
+    version: "v3",
+    auth: googleOAuth2Client,
+  });
+
   const account = await Account.findById(accountId);
+  const { webhookId, webhookExpiration } = account;
+  const isValidate = new Date() < new Date(webhookExpiration);
 
-  if (account.webhookId && new Date() < new Date(account.webhookExpiration)) {
-    console.log("Goolge Webhook already set up and active.");
-
-    return;
-  }
-
-  const calendar = google.calendar({ version: "v3", auth: googleOAuth2Client });
   const uniqueId = account.webhookId || crypto.randomUUID();
 
   try {
-    const response = await calendar.events.watch({
-      calendarId: "primary",
-      requestBody: {
-        id: uniqueId,
-        type: "web_hook",
-        address: "https://api.myjarvis.co/webhook/google/calendar",
-        token: "verification-token",
-      },
-    });
+    if (!webhookId || !isValidate) {
+      const response = await calendar.events.watch({
+        calendarId: "primary",
+        requestBody: {
+          id: uniqueId,
+          type: "web_hook",
+          address: "https://api.myjarvis.co/webhook/google/calendar",
+          token: uniqueId,
+        },
+      });
 
-    console.log("Google Webhook set up successfully:", response.data);
+      console.log("Google Webhook set up successfully:", response.data);
 
-    const expirationDate = new Date(
-      Date.now() + parseInt(response.data.expiration, 10),
-    );
+      const expirationDate = new Date(
+        Date.now() + Number(response.data.expiration),
+      );
+      console.log("Webhook expiration date:", expirationDate);
 
-    account.webhookId = uniqueId;
-    account.webhookExpiration = expirationDate;
+      account.webhookId = uniqueId;
+      account.webhookExpiration = expirationDate;
 
-    await account.save();
+      await account.save();
+    } else {
+      console.log("Google Webhook already set up and active.");
+    }
   } catch (error) {
     console.error("Failed to set up webhook:", error);
 
@@ -47,41 +52,42 @@ exports.setupGoogleWebhook = async (accountId, accessToken) => {
 };
 
 exports.setupMicrosoftWebhook = async (accountId, accessToken) => {
-  const account = Account.findById(accountId);
+  const account = await Account.findById(accountId);
+  const { webhookId, webhookExpiration } = account;
+  const isValidate = new Date() < new Date(webhookExpiration);
 
-  if (account.webhookId && new Date() < new Date(account.webhookExpiration)) {
-    console.log("Microsoft Webhook already set up and active.");
-
-    return;
-  }
-
-  const uniqueId = crypto.randomUUID();
+  const uniqueId = account.webhookId || crypto.randomUUID();
 
   try {
-    const response = await axios({
-      method: "post",
-      url: "https://graph.microsoft.com/v1.0/subscriptions",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      data: {
-        changeType: "created,updated,deleted",
-        notificationUrl: "https://api.myjarvis.co/webhook/microsoft/calendar",
-        resource: "me/events",
-        expirationDateTime: new Date(
-          Date.now() + 3600 * 1000 * 24,
-        ).toISOString(),
-        clientState: uniqueId,
-      },
-    });
+    if (!webhookId || !isValidate) {
+      const response = await axios.post(
+        "https://graph.microsoft.com/v1.0/subscriptions",
+        {
+          changeType: "created,updated,deleted",
+          notificationUrl: "https://api.myjarvis.co/webhook/microsoft/calendar",
+          resource: "me/events",
+          expirationDateTime: new Date(
+            Date.now() + 3600 * 1000 * 24,
+          ).toISOString(),
+          clientState: uniqueId,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      );
 
-    console.log("Microsoft webhook set up successfully:", response.data);
+      console.log("Microsoft webhook set up successfully:", response.data);
 
-    account.webhookId = uniqueId;
-    account.webhookExpiration = new Date(response.data.expirationDateTime);
+      account.webhookId = uniqueId;
+      account.webhookExpiration = new Date(response.data.expirationDateTime);
 
-    await account.save();
+      await account.save();
+    } else {
+      console.log("Microsoft Webhook already set up and active.");
+    }
   } catch (error) {
     console.error("Failed to set up Microsoft webhook:", error);
 

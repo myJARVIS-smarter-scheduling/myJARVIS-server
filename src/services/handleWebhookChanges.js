@@ -8,6 +8,9 @@ const {
 } = require("./handleEventUpdates");
 
 const updateDatabaseWithChanges = async (account, changes) => {
+  console.log(
+    `Processing ${account.provider} calendar webhook database updates`,
+  );
   const { provider } = account;
 
   changes.forEach((change) => {

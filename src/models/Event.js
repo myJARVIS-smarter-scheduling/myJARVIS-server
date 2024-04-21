@@ -14,6 +14,7 @@ const eventSchema = new mongoose.Schema({
   endAt: { type: Date, required: true },
   provider: { type: String, required: true },
   eventId: { type: String, required: true, unique: true },
+  etag: { type: String, required: true, unique: true },
 });
 
 exports.Event = mongoose.model("Event", eventSchema);

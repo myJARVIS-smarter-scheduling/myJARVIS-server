@@ -108,6 +108,7 @@ exports.createGoogleCalendarEvent = async (accountId, newEventData) => {
       {
         $set: {
           eventId: response.data.id,
+          etag: response.data.etag,
           timezone: eventStart.timeZone,
           startAt: eventStart.dateTime || eventStart.date,
           endAt: eventEnd.dateTime || eventEnd.date,

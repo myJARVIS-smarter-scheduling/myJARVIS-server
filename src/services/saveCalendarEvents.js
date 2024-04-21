@@ -11,6 +11,7 @@ exports.saveCalendarEvents = async (
 ) => {
   try {
     const eventPromises = events.map(async (event) => {
+      console.log("Saving event:", event);
       let convertedStartWithUserTimezone;
       let convertedEndWithUserTimezone;
 
@@ -29,6 +30,7 @@ exports.saveCalendarEvents = async (
       }
 
       const eventId = event.id;
+      const etag = event.etag || event["@odata.etag"];
       const existingEvent = await Event.findOne({ eventId });
       const eventTimezone = TIMEZONE_LIST.find(
         (timezone) =>
@@ -70,6 +72,7 @@ exports.saveCalendarEvents = async (
             : convertedEndWithUserTimezone,
         provider,
         eventId,
+        etag,
       };
 
       if (!existingEvent) {

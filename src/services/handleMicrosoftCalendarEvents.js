@@ -131,6 +131,7 @@ exports.createOutlookCalendarEvent = async (
       {
         $set: {
           eventId: response.data.id,
+          etag: response.data["@odata.etag"],
           timezone: hasTimezoneSetting
             ? formattedEventTimezone
             : formattedUserTimezone,

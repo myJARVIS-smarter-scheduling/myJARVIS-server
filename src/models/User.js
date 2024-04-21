@@ -9,7 +9,7 @@ const accountSchema = new mongoose.Schema({
   accessToken: { type: String, required: true },
   refreshToken: { type: String },
   tokenExpiredAt: { type: Date },
-  webhookId: { type: String, unique: true },
+  webhookId: { type: String },
   webhookExpiration: { type: Date },
   deltaLink: { type: String },
 });
