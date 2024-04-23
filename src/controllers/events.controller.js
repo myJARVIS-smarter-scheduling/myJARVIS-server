@@ -120,7 +120,6 @@ exports.updateCalendarEvent = async (req, res, next) => {
       );
     }
 
-    console.log("resultOfCalendarUpdate", resultOfCalendarUpdate);
     res
       .status(200)
       .send({ result: "success", updatedEvent: resultOfCalendarUpdate });

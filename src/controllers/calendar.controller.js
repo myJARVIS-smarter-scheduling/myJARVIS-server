@@ -2,10 +2,7 @@ const { googleLogin } = require("../services/getGoogleAuth");
 const { getGoogleUserInfo } = require("../services/getUserInfo");
 const { getGoogleCalendarEvents } = require("../services/getCalendarEvents");
 const { saveCalendarEvents } = require("../services/saveCalendarEvents");
-const {
-  setupGoogleWebhook,
-  setupMicrosoftWebhook,
-} = require("../services/subscribeWebhooks");
+const { setupGoogleWebhook } = require("../services/subscribeWebhooks");
 const { User, Account } = require("../models/User");
 const { Event } = require("../models/Event");
 
@@ -76,9 +73,6 @@ exports.saveGoogleUserAndCalendar = async (req, res, next) => {
       await account.save();
       user.accountList.push(account);
 
-      console.log("new account - google", account);
-      console.log("new accountId - google", account._id);
-
       await setupGoogleWebhook(account._id, account.accessToken);
     } else {
       account.accessToken = tokens.access_token;
@@ -91,10 +85,6 @@ exports.saveGoogleUserAndCalendar = async (req, res, next) => {
       const isValidate = new Date() < new Date(account.webhookExpiration);
 
       account = await account.save();
-
-      console.log("updated account", account);
-      console.log("tokens", tokens.access_token);
-      console.log("updated accessToken", account.accessToken);
 
       if (!webhookId || !isValidate) {
         await setupGoogleWebhook(account._id, account.accessToken);
@@ -145,7 +135,7 @@ exports.saveOutlookUserAndCalendar = async (req, res, next) => {
 
   let user = await User.findOne({ email });
   let loginUser;
-  // const loginUser = await User.findById(userId);
+
   if (userId) {
     loginUser = await User.findById(userId);
   }
@@ -184,26 +174,12 @@ exports.saveOutlookUserAndCalendar = async (req, res, next) => {
     });
 
     await account.save();
+
     user.accountList.push(account);
-
-    console.log("new account - microsoft", account);
-    console.log("new accountId - microsoft", account._id);
-
-    await setupMicrosoftWebhook(account._id, account.accessToken);
   } else {
     account.accessToken = accessToken;
 
-    const { webhookId } = account;
-    const isValidate = new Date() < new Date(account.webhookExpiration);
-
     await account.save();
-
-    console.log("microsoft updated account", account);
-    console.log("microsoft updated accessToken", account.accessToken);
-
-    if (!webhookId || !isValidate) {
-      await setupMicrosoftWebhook(account._id, account.accessToken);
-    }
   }
 
   if (calendarEvents.value.length > 0) {
@@ -261,8 +237,6 @@ exports.transferCalendarEvents = async (req, res, next) => {
       model: "Account",
     });
 
-    console.log("calendar user", user);
-
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -279,9 +253,6 @@ exports.transferCalendarEvents = async (req, res, next) => {
       provider: user.provider,
       timezone: user.timezone,
     };
-
-    console.log("accountEventList", accountEventList);
-    console.log("userInfo", userInfo);
 
     return res.status(200).json({
       result: "success",
