@@ -1,6 +1,9 @@
 const crypto = require("crypto");
+const { startSession } = require("mongoose");
 const { Event } = require("../models/Event");
 const { Account, User } = require("../models/User");
+const { getGoogleCalendarEvents } = require("../services/getCalendarEvents");
+const { saveCalendarEvents } = require("../services/saveCalendarEvents");
 const {
   createGoogleCalendarEvent,
   updateGoogleCalendarEvent,
@@ -150,5 +153,66 @@ exports.deleteCalendarEvent = async (req, res, next) => {
     res.status(200).send({ result: "success" });
   } catch (error) {
     console.error(error);
+  }
+};
+
+exports.fetchCalendarEvents = async (req, res, next) => {
+  console.log("fetchCalendarEvents");
+  const session = await startSession();
+
+  const { userId } = req.cookies;
+  const { accountEmail, accountId, outlookEvents } = req.body;
+
+  try {
+    session.startTransaction();
+    const user = await User.findById(userId);
+    const account = await Account.findById(accountId);
+    console.log("account:", account);
+
+    let updatedEvents;
+    const { provider, accessToken } = account;
+    const { timezone } = user;
+
+    if (provider === "google") {
+      const events = await getGoogleCalendarEvents(accessToken);
+
+      await saveCalendarEvents(
+        account._id,
+        events,
+        provider,
+        timezone,
+        session,
+      );
+
+      const eventPromiseList = await Event.find({ accountId: account._id });
+      updatedEvents = await Promise.all(eventPromiseList);
+    }
+
+    if (provider === "microsoft") {
+      await saveCalendarEvents(
+        account._id,
+        outlookEvents,
+        provider,
+        timezone,
+        session,
+      );
+
+      const eventPromiseList = await Event.find({ accountId: account._id });
+      updatedEvents = await Promise.all(eventPromiseList);
+    }
+
+    await session.commitTransaction();
+
+    res.status(200).send({
+      result: "success",
+      events: updatedEvents,
+      accountId: account._id,
+    });
+  } catch (error) {
+    console.error(error);
+
+    await session.abortTransaction();
+  } finally {
+    await session.endSession();
   }
 };

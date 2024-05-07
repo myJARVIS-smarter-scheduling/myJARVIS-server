@@ -154,7 +154,7 @@ exports.saveOutlookUserAndCalendar = async (req, res, next) => {
   } else if (!userId && user) {
     user.accessToken = accessToken;
 
-    await user.save();
+    user = await user.save();
   } else {
     user = loginUser;
   }
@@ -211,7 +211,13 @@ exports.saveOutlookUserAndCalendar = async (req, res, next) => {
   const eventPromiseList = user.accountList.map(async (accountdata) => {
     const events = await Event.find({ accountId: accountdata._id });
 
-    return { accountId: accountdata._id, email: accountdata.email, events };
+    return {
+      accountId: accountdata._id,
+      accessToken: accountdata.accessToken,
+      email: accountdata.email,
+      provider: accountdata.provider,
+      events,
+    };
   });
 
   const accountEventList = await Promise.all(eventPromiseList);
@@ -244,7 +250,13 @@ exports.transferCalendarEvents = async (req, res, next) => {
     const eventPromiseList = user.accountList.map(async (account) => {
       const events = await Event.find({ accountId: account._id });
 
-      return { accountId: account._id, email: account.email, events };
+      return {
+        accountId: account._id,
+        accessToken: account.accessToken,
+        provider: account.provider,
+        email: account.email,
+        events,
+      };
     });
 
     const accountEventList = await Promise.all(eventPromiseList);

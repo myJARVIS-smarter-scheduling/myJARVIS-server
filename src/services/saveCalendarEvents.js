@@ -7,15 +7,33 @@ exports.saveCalendarEvents = async (
   accountId,
   events,
   provider,
-  userTimezone
+  userTimezone,
+  session = null
 ) => {
   try {
+    const fetchedEventIds = events.map((event) => event.id);
+    const deleteCondition = { accountId, eventId: { $nin: fetchedEventIds } };
+
+    if (provider === "google") {
+      deleteCondition.startAt = { $gte: new Date() };
+    }
+
+    await Event.deleteMany(deleteCondition, { session });
+
     const eventPromises = events.map(async (event) => {
-      console.log("Saving event:", event);
+      const eventId = event.id;
+      const etag = event.etag || event["@odata.etag"];
+      const eventTimezone = TIMEZONE_LIST.find(
+        (timezone) =>
+          timezone.alt === event.originalStartTimeZone ||
+          timezone.value === event.originalStartTimeZone
+      );
+
       let convertedStartWithUserTimezone;
       let convertedEndWithUserTimezone;
+      let formattedEventTimezone;
 
-      if (provider !== "google") {
+      if (provider === "microsoft") {
         convertedStartWithUserTimezone = await convertTimezoneWithDST(
           event.start.dateTime,
           provider,
@@ -29,16 +47,7 @@ exports.saveCalendarEvents = async (
         );
       }
 
-      const eventId = event.id;
-      const etag = event.etag || event["@odata.etag"];
       const existingEvent = await Event.findOne({ eventId });
-      const eventTimezone = TIMEZONE_LIST.find(
-        (timezone) =>
-          timezone.alt === event.originalStartTimeZone ||
-          timezone.value === event.originalStartTimeZone
-      );
-
-      let formattedEventTimezone;
 
       if (provider === "microsoft") {
         event.originalStartTimeZone === "UTC"
@@ -75,15 +84,18 @@ exports.saveCalendarEvents = async (
         etag,
       };
 
-      if (!existingEvent) {
+      if (existingEvent) {
+        console.log(`Event ${eventId} already exists. It will be updated.`);
+
+        return Event.updateOne({ eventId }, newEventData, {
+          upsert: true,
+          session,
+        });
+      } else {
         console.log(`Event ${eventId} is new. it will be saved.`);
 
-        return Event.create(newEventData);
+        return Event.create([newEventData], { session });
       }
-
-      console.log(`Event ${eventId} already exists. it will be updated.`);
-
-      return null;
     });
 
     const eventList = await Promise.all(eventPromises);

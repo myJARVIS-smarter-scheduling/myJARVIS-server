@@ -6,6 +6,7 @@ const { verifyToken } = require("../middlewares/verifyToken");
 const eventsController = require("../controllers/events.controller");
 
 router.post("/", verifyToken, eventsController.createCalendarEvent);
+router.post("/fetch", verifyToken, eventsController.fetchCalendarEvents);
 
 router.patch("/:eventId", verifyToken, eventsController.updateCalendarEvent);
 

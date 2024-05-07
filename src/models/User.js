@@ -11,7 +11,6 @@ const accountSchema = new mongoose.Schema({
   tokenExpiredAt: { type: Date },
   webhookId: { type: String },
   webhookExpiration: { type: Date },
-  deltaLink: { type: String },
 });
 
 const userSchema = new mongoose.Schema({
