@@ -14,7 +14,7 @@ exports.saveGoogleUserAndCalendar = async (req, res, next) => {
     const { tokens } = await googleLogin(code);
     const { email, name, timezone, language } = await getGoogleUserInfo(
       tokens.access_token,
-      tokens.refresh_token
+      tokens.refresh_token,
     );
 
     const provider = "google";
@@ -35,7 +35,7 @@ exports.saveGoogleUserAndCalendar = async (req, res, next) => {
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,
         tokenExpiredAt: new Date(
-          new Date().getTime() + tokens.expires_in * 1000
+          new Date().getTime() + tokens.expires_in * 1000,
         ),
       });
 
@@ -44,13 +44,15 @@ exports.saveGoogleUserAndCalendar = async (req, res, next) => {
       user.accessToken = tokens.access_token;
       user.refreshToken = tokens.refresh_token;
       user.tokenExpiredAt = new Date(
-        new Date().getTime() + tokens.expires_in * 1000
+        new Date().getTime() + tokens.expires_in * 1000,
       );
 
       await user.save();
     } else {
       user = loginUser;
     }
+
+    console.log("google user", user);
 
     let account = await Account.findOne({
       userId: user._id,
@@ -66,7 +68,7 @@ exports.saveGoogleUserAndCalendar = async (req, res, next) => {
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,
         tokenExpiredAt: new Date(
-          new Date().getTime() + tokens.expires_in * 1000
+          new Date().getTime() + tokens.expires_in * 1000,
         ),
       });
 
@@ -78,7 +80,7 @@ exports.saveGoogleUserAndCalendar = async (req, res, next) => {
       account.accessToken = tokens.access_token;
       account.refreshToken = tokens.refresh_token;
       account.tokenExpiredAt = new Date(
-        new Date().getTime() + tokens.expires_in * 1000
+        new Date().getTime() + tokens.expires_in * 1000,
       );
 
       const { webhookId } = account;
@@ -98,7 +100,7 @@ exports.saveGoogleUserAndCalendar = async (req, res, next) => {
         account._id,
         eventList,
         account.provider,
-        user.timezone
+        user.timezone,
       );
     }
 
@@ -141,6 +143,8 @@ exports.saveOutlookUserAndCalendar = async (req, res, next) => {
   }
 
   if (!user && !userId) {
+    console.log("microsoft user not found");
+
     user = new User({
       email,
       name: userInfo.displayName,
@@ -151,6 +155,8 @@ exports.saveOutlookUserAndCalendar = async (req, res, next) => {
     });
 
     user = await user.save();
+
+    console.log("microsoft user created", user);
   } else if (!userId && user) {
     user.accessToken = accessToken;
 
@@ -158,6 +164,8 @@ exports.saveOutlookUserAndCalendar = async (req, res, next) => {
   } else {
     user = loginUser;
   }
+
+  console.log("mircrosoft user", user);
 
   let account = await Account.findOne({
     userId: user._id,
@@ -187,7 +195,7 @@ exports.saveOutlookUserAndCalendar = async (req, res, next) => {
       account._id,
       calendarEvents.value,
       account.provider,
-      user.timezone
+      user.timezone,
     );
   }
 
